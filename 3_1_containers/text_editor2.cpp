@@ -10,7 +10,6 @@ struct TextEditor {
     std::list<std::string>::iterator secondaryCursor;
     std::list<std::string> largeBuffer;
     bool shiftPressed = false;
-    bool reachedBegin = false;
     bool reversed = false;
 };
 
@@ -35,21 +34,6 @@ void PrintDocument(const TextEditor& editor) {
 }
 
 
-void AdjustCursors(TextEditor& editor) {
-    if (editor.reversed) {
-        std::swap(editor.cursor, editor.secondaryCursor);
-        editor.reversed = false;
-    } else {
-        if (editor.secondaryCursor != editor.document.end()) {
-            ++editor.secondaryCursor;
-        }
-        if (!editor.reachedBegin) {
-            ++editor.cursor;
-            editor.reachedBegin = false;
-        }
-    }
-}
-
 void Shift(TextEditor& editor) {
 	editor.shiftPressed = true;
 	editor.secondaryCursor = editor.cursor;
@@ -57,7 +41,6 @@ void Shift(TextEditor& editor) {
 
 
 void Down(TextEditor& editor) {
-    editor.reachedBegin = false;
     if (editor.shiftPressed && editor.cursor == editor.secondaryCursor) {
         editor.reversed = true; 
     }
@@ -73,7 +56,6 @@ void Up(TextEditor& editor) {
         editor.reversed = false;
     }
     if (editor.cursor == editor.document.begin()) {
-        editor.reachedBegin = true;
         return;
     }
     --editor.cursor;
@@ -91,7 +73,10 @@ void CtrlX(TextEditor& editor) {
         return;
     }
     if (editor.shiftPressed && editor.cursor != editor.secondaryCursor) {
-        AdjustCursors(editor);
+        if (editor.reversed) {
+            std::swap(editor.cursor, editor.secondaryCursor);
+            editor.reversed = false;
+        }
         if (!editor.largeBuffer.empty()) {
             editor.largeBuffer.clear();
         }
@@ -107,19 +92,20 @@ void CtrlX(TextEditor& editor) {
     editor.largeBuffer.assign(1, *editor.cursor);
     editor.cursor = editor.document.erase(editor.cursor);
     editor.shiftPressed = false;
-    std::cout << editor.largeBuffer.size() << '\n';
 }
 
 
 void CtrlV(TextEditor& editor) {
     if (editor.largeBuffer.empty()) {
         editor.shiftPressed = false;
-        editor.reachedBegin = false;
         editor.reversed = false;
         return;
     }
     if (editor.shiftPressed && editor.cursor != editor.secondaryCursor) {
-        AdjustCursors(editor);
+        if (editor.reversed) {
+            std::swap(editor.cursor, editor.secondaryCursor);
+            editor.reversed = false;
+        }
         editor.cursor = editor.document.erase(editor.cursor, editor.secondaryCursor);
 	}
     editor.document.insert(editor.cursor, editor.largeBuffer.begin(), editor.largeBuffer.end());
@@ -146,15 +132,15 @@ int main() {
     TextEditor editor;
     InitEditor(editor);
     std::string command;
-    // while (std::cin >> command) {
-    //     CommandContext(command, editor);
-    // }
-    while (true) {
-        std::getline(std::cin, command);
-        if (command.empty()) {
-            break;
-        } 
+    while (std::cin >> command) {
         CommandContext(command, editor);
     }
+    // while (true) {
+    //     std::getline(std::cin, command);
+    //     if (command.empty()) {
+    //         break;
+    //     } 
+    //     CommandContext(command, editor);
+    // }
     PrintDocument(editor);
 }
